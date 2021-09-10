@@ -6,60 +6,46 @@
 //
 
 import Foundation
-import Combine
 
-@available(macOS 10.15, *)
-final public class ReduxStore<State>: ObservableObject {
-    public typealias Reducer<S> = (S, StoreAction) -> S
-    public typealias Listener = [UUID: (State) -> Void]
+final public class ReduxStore<State: Equatable, StoreAction> {
+    public typealias Reducer = (State, StoreAction) -> State
+    public typealias Subscriber = [UUID: (State) -> Void]
+    public typealias Middleware = (_ store: ReduxStore, _ next: @escaping (StoreAction) -> Void, _ action: StoreAction) -> Void
     
-    // TODO: Find a way to allow state modules
-    @Published private(set) var state: State
-    @Published private var storeActionDispatched: StoreAction? = nil
-    
-    private let middleware: [StoreMiddlewareProtocol]
-    private let reducers: [Reducer<Any>]
-    private var storeSubscribers: [UUID: (State) -> Void] = [:]
-    
-    private var cancellables: Set<AnyCancellable> = []
+    private var state: State
+    private let middleware: [Middleware]
+    private let reducers: [Reducer]
+    private var storeSubscribers: Subscriber = [:]
     
     public init(
-        state: State,
-        reducers: [Reducer<Any>] = [],
-        middlewares: [StoreMiddlewareProtocol] = []
+        initialState: State,
+        reducers: [Reducer],
+        middleware: [Middleware] = []
     ) {
-        self.state = state
+        self.state = initialState
         self.reducers = reducers
-        self.middleware = middlewares
-        
-        subscribeToStoreActionsForReducers()
-        subscribeToViewStateReducers()
+        self.middleware = middleware
     }
     
     final public func getState() -> State {
         return self.state
     }
     
-    final public func subscribe(_ listener: Listener) -> (Listener) -> Void {
+    final public func subscribe(_ listener: Subscriber) -> () -> Void {
         for (key, value) in listener {
             storeSubscribers.updateValue(value, forKey: key)
         }
         
-        func unSubscribe(_ listener: Listener) {
+        return { [weak self, listener] in
             for (key, _) in listener {
-                storeSubscribers.removeValue(forKey: key)
+                self?.storeSubscribers.removeValue(forKey: key)
             }
         }
-        
-        return unSubscribe
     }
     
     final public func dispatch(action: StoreAction) {
-        if self.middleware.isEmpty {
-            self.storeActionDispatched = action
-            
-            invokeSubscribers()
-            
+        if middleware.isEmpty {
+            invokeReducers(with: action)
             return
         }
 
@@ -67,29 +53,27 @@ final public class ReduxStore<State>: ObservableObject {
         let endIndex = middleware.endIndex - 1
         var middlewarePluginsCalled: [String] = []
 
-        func run(_ middleware: StoreMiddlewareProtocol, _ action: StoreAction, _ index: Int) {
-            middleware.run(
-                store: self,
-                next: { [weak self] ac in
+        func run(_ mware: @escaping Middleware, _ action: StoreAction, _ index: Int) {
+            mware(
+                self,
+                { [weak self] ac in
                     guard let self = self else { return }
                     
-                    let typeName = String(describing: middleware)
+                    let typeName = String(describing: mware)
                     if middlewarePluginsCalled.contains(typeName) {
                         return
                     }
-
                     middlewarePluginsCalled.append(typeName)
-
+                    
                     currentIndex = index.advanced(by: 1)
                     if currentIndex > endIndex {
-                        // Propagate the action to reducers
-                        self.storeActionDispatched = action
-                        self.invokeSubscribers()
+                        self.invokeReducers(with: action)
                         return
                     }
+                    
                     run(self.middleware[currentIndex], ac, currentIndex)
                 },
-                action: action
+                action
             )
         }
         
@@ -97,63 +81,22 @@ final public class ReduxStore<State>: ObservableObject {
     }
     
     private func invokeSubscribers() {
-        for (_, value) in storeSubscribers {
-            value(getState())
+        for (_, subscriptionListener) in storeSubscribers {
+            subscriptionListener(self.state)
         }
     }
     
-    /// The equivalent of the [Redux connect()](https://react-redux.js.org/api/connect) or
-    /// [Redux Hooks](https://react-redux.js.org/api/hooks) APIs, it subscribes to the
-    /// Redux store and then runs whenever a store action is dispatched in order to provide view components
-    /// with up-to-date pieces of data (i.e. state) from the store that each view component needs to render.
-    private func subscribeToStoreActionsForReducers() {
-        self.$storeActionDispatched
-            .compactMap { $0 }
-            .sink { [weak self] storeAction in
-                guard let self = self else { return }
-                
-                if self.reducers.isEmpty { return }
-                
-                for reducer in self.reducers {
-                    self.state = reducer(self.state, storeAction) as! State
-                }
-            }
-            .store(in: &cancellables)
-    }
-    
-    /// Receives notifications of changes in the view states and further propagates them to view components
-    /// interested in the changes. This is a work-around for handling SwiftUI view's inability to bind to nested
-    /// `ObservableObject`s.
-    ///
-    /// [See source here.](https://stackoverflow.com/a/58406402/2077405)
-    ///
-    /// - Tag: subscribeToViewStateReducers
-    private func subscribeToViewStateReducers() {
-        //let viewStateSet1 = Publishers.CombineLatest3(
-        //    mainScreenViewState.objectWillChange,
-        //    self.sendLiveLocationConfirmationDialogViewState.objectWillChange,
-        //    self.accessCodeVerificationDialogViewState.objectWillChange
-        //)
-        //
-        //let viewStateSet2 = Publishers.CombineLatest(
-        //    self.authScreenViewState.objectWillChange,
-        //    self.meScreenViewState.objectWillChange
-        //)
-        
+    private func invokeReducers(with action: StoreAction) {
         if self.reducers.isEmpty { return }
         
-        (state as? AnyPublisher<State, Never>)?.sink {[weak self] (_state) in
-            self?.objectWillChange.send()
-        }
-        .store(in: &cancellables)
+        let oldState = self.state
         
-        //Publishers.CombineLatest(
-        //    //viewStateSet1, viewStateSet2
-        //    ...self.reducers
-        //)
-        //.sink { [weak self] (_, _) in
-        //    self?.objectWillChange.send()
-        //}
-        //.store(in: &cancellables)
+        for reducer in self.reducers {
+            self.state = reducer(self.state, action)
+        }
+        
+        if self.state != oldState {
+            invokeSubscribers()
+        }
     }
 }

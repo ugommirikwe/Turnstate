@@ -13,7 +13,7 @@ public protocol StoreMiddlewareProtocol {
     ///   - store: Store instance.
     ///   - next: Function to invoke to pass-on the current action to the next middleware.
     ///   - action: The current [StoreAction](StoreAction) dispatched.
-    func run<Store>(
+    func run<Store, StoreAction>(
         store: Store,
         next: @escaping (StoreAction) -> Void,
         action: StoreAction
