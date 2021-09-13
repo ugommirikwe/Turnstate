@@ -1,26 +1,19 @@
-//
-//  File.swift
-//  
-//
-//  Created by Ugochukwu Mmirikwe on 2021/08/18.
-//
-
 import Foundation
 
-final public class ReduxStore<State: Equatable, StoreAction> {
+/// Concrete implementation of this library's Redux-like Store.
+final public class ReduxStore<State: Equatable & Codable, StoreAction>: ReduxStoreProtocol {
     public typealias Reducer = (State, StoreAction) -> State
     public typealias Subscriber = [UUID: (State) -> Void]
-    public typealias Middleware = (_ store: ReduxStore, _ next: @escaping (StoreAction) -> Void, _ action: StoreAction) -> Void
     
     private var state: State
-    private let middleware: [Middleware]
     private let reducers: [Reducer]
+    private let middleware: [StoreMiddlewareProtocol]
     private var storeSubscribers: Subscriber = [:]
     
     public init(
         initialState: State,
         reducers: [Reducer],
-        middleware: [Middleware] = []
+        middleware: [StoreMiddlewareProtocol] = []
     ) {
         self.state = initialState
         self.reducers = reducers
@@ -29,18 +22,6 @@ final public class ReduxStore<State: Equatable, StoreAction> {
     
     final public func getState() -> State {
         return self.state
-    }
-    
-    final public func subscribe(_ listener: Subscriber) -> () -> Void {
-        for (key, value) in listener {
-            storeSubscribers.updateValue(value, forKey: key)
-        }
-        
-        return { [weak self, listener] in
-            for (key, _) in listener {
-                self?.storeSubscribers.removeValue(forKey: key)
-            }
-        }
     }
     
     final public func dispatch(action: StoreAction) {
@@ -53,10 +34,10 @@ final public class ReduxStore<State: Equatable, StoreAction> {
         let endIndex = middleware.endIndex - 1
         var middlewarePluginsCalled: [String] = []
 
-        func run(_ mware: @escaping Middleware, _ action: StoreAction, _ index: Int) {
-            mware(
-                self,
-                { [weak self] ac in
+        func run(_ mware: StoreMiddlewareProtocol, _ action: StoreAction, _ index: Int) {
+            mware.run(
+                store: self,
+                next: { [weak self] ac in
                     guard let self = self else { return }
                     
                     let typeName = String(describing: mware)
@@ -73,11 +54,23 @@ final public class ReduxStore<State: Equatable, StoreAction> {
                     
                     run(self.middleware[currentIndex], ac, currentIndex)
                 },
-                action
+                action: action
             )
         }
         
         run(middleware.first!, action, 0)
+    }
+    
+    final public func subscribe(_ listener: Subscriber) -> () -> Void {
+        for (key, value) in listener {
+            storeSubscribers.updateValue(value, forKey: key)
+        }
+        
+        return { [weak self, listener] in
+            for (key, _) in listener {
+                self?.storeSubscribers.removeValue(forKey: key)
+            }
+        }
     }
     
     private func invokeSubscribers() {
