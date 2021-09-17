@@ -3,7 +3,7 @@ import Foundation
 /// Defines a type for this library's implementation of a Redux-like Store.
 public protocol ReduxStoreProtocol {
     /// The current state tree of your application.
-    associatedtype State: Equatable & Codable
+    associatedtype State: Equatable
     
     /// An object describing the change that makes sense for your application. Actions are the only way to get data into the store, so any data, whether from the UI events, network callbacks, or other sources such as WebSockets needs to eventually be dispatched as actions.
     associatedtype StoreAction

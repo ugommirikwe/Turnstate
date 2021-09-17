@@ -1,7 +1,7 @@
 import Foundation
 
 /// Concrete implementation of this library's Redux-like Store.
-final public class ReduxStore<State: Equatable & Codable, StoreAction>: ReduxStoreProtocol {
+final public class ReduxStore<State: Equatable, StoreAction>: ReduxStoreProtocol {
     public typealias Reducer = (State, StoreAction) -> State
     public typealias Subscriber = [UUID: (State) -> Void]
     
@@ -62,8 +62,9 @@ final public class ReduxStore<State: Equatable & Codable, StoreAction>: ReduxSto
     }
     
     final public func subscribe(_ listener: Subscriber) -> () -> Void {
-        for (key, value) in listener {
-            storeSubscribers.updateValue(value, forKey: key)
+        for (key, callback) in listener {
+            storeSubscribers.updateValue(callback, forKey: key)
+            callback(getState())
         }
         
         return { [weak self, listener] in

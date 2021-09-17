@@ -13,10 +13,8 @@
                 middleware: [SomeMiddleware()]
             )
             
-            appStateSubscription = reduxStore.getState()
-            
-            unSubscribeFromStore = reduxStore.subscribe([UUID(): { [self] newState in
-                appStateSubscription = newState
+            unSubscribeFromStore = reduxStore.subscribe([UUID(): { [weak self] newState in
+                self?.appStateSubscription = newState
             }])
         }
         
@@ -39,7 +37,9 @@
             XCTAssertEqual(reduxStore.getState().user.name, "Melissa")
             XCTAssertEqual(appStateSubscription.user.name, "Melissa")
             
-            let anotherUser = User(id: "id", username: "kingsley", name: "Kingsley")
+            var anotherUser = user
+            anotherUser.username = "kingsley"
+            anotherUser.name = "Kingsley"
             reduxStore.dispatch(action: .UserModified(anotherUser))
 
             XCTAssertEqual(reduxStore.getState().user.name, "Kingsley")
@@ -65,8 +65,8 @@
     
     struct User: Equatable, Codable {
         let id: String
-        let username: String
-        let name: String
+        var username: String
+        var name: String
     }
     
     enum StoreAction {
