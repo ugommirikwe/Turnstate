@@ -13,9 +13,9 @@ public protocol StoreMiddlewareProtocol: AnyObject {
     ///   - store: Store instance.
     ///   - next: Function to invoke to pass-on the current action to the next middleware.
     ///   - action: The current [StoreAction](StoreAction) dispatched.
-    func run<Store: ReduxStoreProtocol, StoreAction>(
+    func run<Store: ReduxStoreProtocol, Action: StoreActionProtocol>(
         store: Store,
-        next: @escaping (StoreAction) -> Void,
-        action: StoreAction
+        next: @escaping (Action) -> Void,
+        action: Action
     )
 }

@@ -69,15 +69,15 @@
         var name: String
     }
     
-    enum StoreAction {
+    enum StoreAction: StoreActionProtocol {
         case UserModified(User)
     }
     
     class SomeMiddleware: StoreMiddlewareProtocol {
-        func run<Store: ReduxStoreProtocol, StoreAction>(
+        func run<Store: ReduxStoreProtocol, Action: StoreActionProtocol>(
             store: Store,
-            next: @escaping (StoreAction) -> Void,
-            action: StoreAction
+            next: @escaping (Action) -> Void,
+            action: Action
         ) {
             dump(store.getState(), name: "Old AppState")
             next(action)

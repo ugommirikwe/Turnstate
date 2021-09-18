@@ -1,7 +1,7 @@
 import Foundation
 
 /// Concrete implementation of this library's Redux-like Store.
-final public class ReduxStore<State: Equatable, StoreAction>: ReduxStoreProtocol {
+final public class ReduxStore<State: Equatable, StoreAction: StoreActionProtocol>: ReduxStoreProtocol {
     public typealias Reducer = (State, StoreAction) -> State
     public typealias Subscriber = [UUID: (State) -> Void]
     
