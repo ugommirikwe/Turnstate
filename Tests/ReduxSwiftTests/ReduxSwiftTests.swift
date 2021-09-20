@@ -2,7 +2,7 @@
     @testable import ReduxSwift
 
     final class ReduxStoreTests: XCTestCase {
-        private var reduxStore: ReduxStore<AppState, StoreAction>!
+        private var reduxStore: ReduxStore<AppState>!
         private var unSubscribeFromStore: (() -> Void)!
         private var appStateSubscription: AppState!
         
@@ -31,7 +31,7 @@
             let user = User(id: "id", username: "Mel", name: "Melissa")
             
             // Act
-            reduxStore.dispatch(action: .UserModified(user))
+            reduxStore.dispatch(action: StoreAction.UserModified(user))
             
             // Assert
             XCTAssertEqual(reduxStore.getState().user.name, "Melissa")
@@ -40,7 +40,7 @@
             var anotherUser = user
             anotherUser.username = "kingsley"
             anotherUser.name = "Kingsley"
-            reduxStore.dispatch(action: .UserModified(anotherUser))
+            reduxStore.dispatch(action: StoreAction.UserModified(anotherUser))
 
             XCTAssertEqual(reduxStore.getState().user.name, "Kingsley")
             XCTAssertEqual(appStateSubscription.user.name, "Kingsley")
@@ -53,9 +53,9 @@
         
         static func userStateReducer(
             state: AppState = .init(),
-            action: StoreAction
+            action: StoreActionProtocol
         ) -> AppState {
-            if case .UserModified(let usr) = action {
+            if case .UserModified(let usr) = action as! StoreAction {
                 return AppState(user: usr)
             }
             
@@ -74,8 +74,8 @@
     }
     
     class SomeMiddleware: StoreMiddlewareProtocol {
-        func run<Store: ReduxStoreProtocol>(
-            store: Store,
+        func run(
+            store: StoreAPI,
             next: @escaping (StoreActionProtocol) -> Void,
             action: StoreActionProtocol
         ) {
@@ -83,9 +83,9 @@
             case .UserModified(_):
                 break
             }
-            
-            dump(store.getState(), name: "Old AppState")
-            next(action)
-            dump(store.getState(), name: "New AppState")
+        
+        dump(store.getState(), name: "Old AppState")
+        next(action)
+        dump(store.getState(), name: "New AppState")
         }
     }
