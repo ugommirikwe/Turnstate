@@ -74,11 +74,16 @@
     }
     
     class SomeMiddleware: StoreMiddlewareProtocol {
-        func run<Store: ReduxStoreProtocol, Action: StoreActionProtocol>(
+        func run<Store: ReduxStoreProtocol>(
             store: Store,
-            next: @escaping (Action) -> Void,
-            action: Action
+            next: @escaping (StoreActionProtocol) -> Void,
+            action: StoreActionProtocol
         ) {
+            switch action as! StoreAction {
+            case .UserModified(_):
+                break
+            }
+            
             dump(store.getState(), name: "Old AppState")
             next(action)
             dump(store.getState(), name: "New AppState")

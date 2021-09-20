@@ -52,7 +52,7 @@ final public class ReduxStore<State: Equatable, StoreAction: StoreActionProtocol
                         return
                     }
                     
-                    run(self.middleware[currentIndex], ac, currentIndex)
+                    run(self.middleware[currentIndex], ac as! StoreAction , currentIndex)
                 },
                 action: action
             )
