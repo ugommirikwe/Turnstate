@@ -64,7 +64,7 @@ final public class ReduxStore<State: Equatable> {
     /// - Parameter action: An instance or subset of a concrete type that extends the [StoreActionProtocol](x-source-tag://StoreActionProtocol) in your app.
     ///
     /// - Tag: dispatch
-    final public func dispatch(action: StoreActionProtocol) {
+    final public func dispatch(_ action: StoreActionProtocol) {
         if middleware.isEmpty {
             invokeReducers(with: action)
             return

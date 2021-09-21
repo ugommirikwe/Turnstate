@@ -31,7 +31,7 @@
             let user = User(id: "id", username: "Mel", name: "Melissa")
             
             // Act
-            reduxStore.dispatch(action: StoreAction.UserModified(user))
+            reduxStore.dispatch(StoreAction.UserModified(user))
             
             // Assert
             XCTAssertEqual(reduxStore.getState().user.name, "Melissa")
@@ -40,7 +40,7 @@
             var anotherUser = user
             anotherUser.username = "kingsley"
             anotherUser.name = "Kingsley"
-            reduxStore.dispatch(action: StoreAction.UserModified(anotherUser))
+            reduxStore.dispatch(StoreAction.UserModified(anotherUser))
 
             XCTAssertEqual(reduxStore.getState().user.name, "Kingsley")
             XCTAssertEqual(appStateSubscription.user.name, "Kingsley")
