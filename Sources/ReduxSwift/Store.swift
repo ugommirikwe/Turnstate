@@ -1,9 +1,9 @@
 import Foundation
 
-/// The Redux store brings together the state, actions, and reducers that make up your app.
+/// The store brings together the state, actions, middleware and reducers that make up your app.
 ///
 /// The store has several responsibilities:
-/// - Holds the current application [state](x-source-tag://State) as a tree of read-only properties;
+/// - Holds the current application [state](x-source-tag://RootStateProtocol) as a tree of read-only properties;
 /// - Allows access to the current state via `store.getState()`;
 /// - Allows state to be updated via `store.dispatch(action)`;
 /// - Registers listener callbacks via `store.subscribe(listener)`;
@@ -11,24 +11,20 @@ import Foundation
 ///
 /// It's important to note that you must only have a single instance of this class (store) in your application. When you want to split your data handling logic, you'll use reducer composition and create multiple [reducers](x-source-tag://Reducer) that can be combined together, instead of creating separate stores.
 ///
-/// Using this class requires associating a concrete implementation of a [state](x-source-tag://State) (representing the current state tree of your application), which conforms to the `Equatable` protocol
+/// Using this class requires associating a concrete implementation of a [state](x-source-tag://RootStateProtocol) (representing the current state tree of your application), which conforms to the `Equatable` protocol
 ///
-/// - Tag: ReduxStore
-final public class ReduxStore<State: Equatable> {
-    
-    /// Defines the signature of a pure function that is used to compute a new [state](x-source-tag://State) given the currently existing state and an [action](x-source-tag://StoreActionProtocol) dispatched to the store.
-    /// - Tag: Reducer
-    public typealias Reducer = (State, StoreActionProtocol) -> State
+/// - Tag: Store
+final public class Store<State: RootStateProtocol> {
     
     /// Describes the signature of the function to be passed to the [subscribe](x-source-tag://subscribe)
     /// - Tag: Subscriber
     public typealias Subscriber = [UUID: (State) -> Void]
     
     /// Object representing the current state tree of your application.
+    ///
     /// - Tag: State
     private var state: State
-    
-    private let reducers: [Reducer]
+    private var rootStateReducer: [Reducer<State>]
     private let middleware: [StoreMiddlewareProtocol]
     private var storeSubscribers: Subscriber = [:]
     
@@ -39,17 +35,20 @@ final public class ReduxStore<State: Equatable> {
     ///   - middleware: A list of objects that conform to the [StoreMiddlewareProtocol](x-source-tag://StoreMiddlewareProtocol), which provide a way to enhance the store by adding handling async operations (which reducers can't). The store invokes these plugins, allowing them to intercept actions dispatched to the store before they reach the reducers.
     public init(
         initialState: State,
-        reducers: [Reducer],
+        //reducers: [Reducer<State, Any>],
+        rootStateReducer: Reducer<State>...,
         middleware: [StoreMiddlewareProtocol] = []
     ) {
         self.state = initialState
-        self.reducers = reducers
+        //self.reducers = reducers
+        self.rootStateReducer = rootStateReducer
         self.middleware = middleware
     }
     
     /// Returns the current state tree of your application. It is equal to the last value returned by the store's reducers.
     ///
-    /// - Returns: The current state tree of your application, which should match the type of [State](x-source-tag://State) object associated with this instance of the [ReduxStore](x-source-tag://ReduxStore).
+    /// - Returns: The current state tree of your application, which should match the type of [State](x-source-tag://State) object associated with this instance of the [Store](x-source-tag://Store).
+    ///
     /// - Tag: getState
     final public func getState() -> State {
         return self.state
@@ -57,7 +56,7 @@ final public class ReduxStore<State: Equatable> {
     
     /// Dispatches an action to this store. This is the only way to trigger a state change.
     ///
-    /// [Middleware](x-source-tag://StoreMiddlewareProtocol) plugins registered with this [store](x-source-tag://ReduxStore) will first receive the action dispatched before they're eventually passed on to the reducers.
+    /// [Middleware](x-source-tag://StoreMiddlewareProtocol) plugins registered with this [store](x-source-tag://Store) will first receive the action dispatched before they're eventually passed on to the reducers.
     ///
     /// The store's reducing function will be called with the current getState() result and the given action synchronously. Its return value will be considered the next state. It will be returned from getState() from now on, and the change listeners will immediately be notified.
     ///
@@ -105,6 +104,7 @@ final public class ReduxStore<State: Equatable> {
     /// - Parameter listener: The callback to be invoked any time an action has been dispatched, and the state tree might have changed. Its signature is defined by the [Subscriber](x-source-tag://Subscriber) typealias.
     ///
     /// - Returns: A function that unsubscribes the change listener.
+    ///
     /// - Tag: subscribe
     final public func subscribe(_ listener: Subscriber) -> () -> Void {
         for (key, callback) in listener {
@@ -119,23 +119,47 @@ final public class ReduxStore<State: Equatable> {
         }
     }
     
-    private func invokeSubscribers() {
+    private func notifySubscribers() {
         for (_, subscriptionListener) in storeSubscribers {
             subscriptionListener(self.state)
         }
     }
     
     private func invokeReducers(with action: StoreActionProtocol) {
-        if self.reducers.isEmpty { return }
+        let oldState = state
         
-        let oldState = self.state
-        
-        for reducer in self.reducers {
-            self.state = reducer(self.state, action)
+        rootStateReducer.forEach { reducer in
+            state = reducer(state, action)
         }
         
-        if self.state != oldState {
-            invokeSubscribers()
+        if state != oldState {
+            notifySubscribers()
         }
     }
 }
+
+/// A helper function that turns a list of different reducing functions into a single reducing function you can pass to the store initializer. The resulting reducer calls every child reducer, and gathers their results to update the root [state](x-source-tag://State) object.
+///
+/// This function helps you organize your reducers to manage their own slices of state.
+///
+/// - Parameter reducers: A variadic list of [reducer](x-source-tag://Reducer) functions.
+///
+/// - Returns: A single reducer function.
+///
+/// - Tag: combineReducer
+public func combineReducers<State: RootStateProtocol>(
+    _ reducers: Reducer<State>...
+) -> Reducer<State> {
+    return { state, action in
+        var newState = state
+        reducers.forEach { reducer in
+            newState = reducer(newState, action)
+        }
+        return newState
+    }
+}
+
+/// Defines the signature of a pure function that is used to compute a new [state](x-source-tag://State) given the currently existing state and an [action](x-source-tag://StoreActionProtocol) dispatched to the store.
+///
+/// - Tag: Reducer
+public typealias Reducer<RootStateProtocol> = (RootStateProtocol, StoreActionProtocol) -> RootStateProtocol
