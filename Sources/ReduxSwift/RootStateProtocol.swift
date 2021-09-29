@@ -48,7 +48,7 @@ extension RootStateProtocol {
     /// - Returns: A copy of the state object it is called on, alongside new values assigned to properties within the closure.
     ///
     /// - Tag: copy
-    func copy(_ clone: @escaping (Self) -> Self) -> Self {
+    public func copy(_ clone: @escaping (Self) -> Self) -> Self {
         return clone(self)
     }
 }
