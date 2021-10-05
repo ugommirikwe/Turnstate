@@ -1,5 +1,5 @@
 import XCTest
-@testable import ReduxSwift
+@testable import Turnstate
 
 final class StoreTests: XCTestCase {
     private var store: Store<AppState>!
@@ -11,7 +11,7 @@ final class StoreTests: XCTestCase {
         
         store = Store(
             initialState: .generateAppStateDummy(),
-            rootStateReducer: AppState.rootReducer,
+            reducer: AppState.rootReducer,
             middleware: [LoggerMiddleware()]
         )
         
@@ -65,7 +65,7 @@ final class StoreTests: XCTestCase {
 }
 
 
-struct AppState: RootStateProtocol {
+struct AppState: StoreStateProtocol {
     private(set) var user: User
     private(set) var todos: [Todo] = []
     
@@ -83,12 +83,7 @@ let userReducer: Reducer<AppState> = { state, action in
     switch action as! StoreAction {
         
     case .UserModified(let user):
-        return state.copy { oldState in
-            .init(
-                user: user,
-                todos: oldState.todos
-            )
-        }
+        return state.copy(updating: \.user, to: user)
         
     case .UserAddRequested(_): fallthrough
         
@@ -102,12 +97,7 @@ let todoReducer: Reducer<AppState> = { state, action in
     switch action as! StoreAction {
         
     case .TodoAddRequested(let todo):
-        return state.copy { oldState in
-            .init(
-                user: oldState.user,
-                todos: oldState.todos + [todo]
-            )
-        }
+        return state.copy(updating: \.todos, to: state.todos + [todo])
         
     default: break
     }

@@ -3,18 +3,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "ReduxSwift",
+    name: "Turnstate",
     products: [
         .library(
-            name: "ReduxSwift",
-            targets: ["ReduxSwift"]),
+            name: "Turnstate",
+            targets: ["Turnstate"]),
     ],
     targets: [
         .target(
-            name: "ReduxSwift",
+            name: "Turnstate",
             dependencies: []),
         .testTarget(
-            name: "ReduxSwiftTests",
-            dependencies: ["ReduxSwift"]),
+            name: "TurnstateTests",
+            dependencies: ["Turnstate"]),
     ]
 )

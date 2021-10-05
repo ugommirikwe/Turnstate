@@ -3,7 +3,7 @@ import Foundation
 /// The store brings together the state, actions, middleware and reducers that make up your app.
 ///
 /// The store has several responsibilities:
-/// - Holds the current application [state](x-source-tag://RootStateProtocol) as a tree of read-only properties;
+/// - Holds the current application [state](x-source-tag://StoreStateProtocol) as a tree of read-only properties;
 /// - Allows access to the current state via `store.getState()`;
 /// - Allows state to be updated via `store.dispatch(action)`;
 /// - Registers listener callbacks via `store.subscribe(listener)`;
@@ -14,7 +14,7 @@ import Foundation
 /// Using this class requires associating a concrete implementation of a [state](x-source-tag://RootStateProtocol) (representing the current state tree of your application), which conforms to the `Equatable` protocol
 ///
 /// - Tag: Store
-final public class Store<State: RootStateProtocol> {
+final public class Store<State: StoreStateProtocol> {
     
     /// Describes the signature of the function to be passed to the [subscribe](x-source-tag://subscribe)
     /// - Tag: Subscriber
@@ -24,24 +24,23 @@ final public class Store<State: RootStateProtocol> {
     ///
     /// - Tag: State
     private var state: State
-    private var rootStateReducer: [Reducer<State>]
+    private var reducers: [Reducer<State>]
     private let middleware: [StoreMiddlewareProtocol]
     private var storeSubscribers: Subscriber = [:]
     
     /// Creates a new instance of this store, provided its dependencies are passed in.
     /// - Parameters:
     ///   - initialState: The initial state to hydrate this store instance with. It must be the same type as defined by the generic [State](x-source-tag://State) object.
-    ///   - reducers: A list of [reducers](x-source-tag://Reducer) you can pass to the store to handle changes to different parts of the state (i.e. different properties defined in the [state](x-source-tag://State)). All of these reducers passed in will be invoked for every action dispatched to the store so they can participate in responding to the actions that pertains to the part of the state they are concerned with.
+    ///   - reducer: A list of [reducers](x-source-tag://Reducer) you can pass to the store to handle changes to different parts of the state (i.e. different properties defined in the [state](x-source-tag://State)). All of these reducers passed in will be invoked for every action dispatched to the store so they can participate in responding to the actions that pertains to the part of the state they are concerned with.
     ///   - middleware: A list of objects that conform to the [StoreMiddlewareProtocol](x-source-tag://StoreMiddlewareProtocol), which provide a way to enhance the store by adding handling async operations (which reducers can't). The store invokes these plugins, allowing them to intercept actions dispatched to the store before they reach the reducers.
     public init(
         initialState: State,
         //reducers: [Reducer<State, Any>],
-        rootStateReducer: Reducer<State>...,
+        reducer: Reducer<State>...,
         middleware: [StoreMiddlewareProtocol] = []
     ) {
         self.state = initialState
-        //self.reducers = reducers
-        self.rootStateReducer = rootStateReducer
+        self.reducers = reducer
         self.middleware = middleware
     }
     
@@ -128,7 +127,7 @@ final public class Store<State: RootStateProtocol> {
     private func invokeReducers(with action: StoreActionProtocol) {
         let oldState = state
         
-        rootStateReducer.forEach { reducer in
+        reducers.forEach { reducer in
             state = reducer(state, action)
         }
         
@@ -147,7 +146,7 @@ final public class Store<State: RootStateProtocol> {
 /// - Returns: A single reducer function.
 ///
 /// - Tag: combineReducer
-public func combineReducers<State: RootStateProtocol>(
+public func combineReducers<State: StoreStateProtocol>(
     _ reducers: Reducer<State>...
 ) -> Reducer<State> {
     return { state, action in
