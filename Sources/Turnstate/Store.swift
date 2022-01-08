@@ -69,6 +69,17 @@ final public class Store<State: StoreStateProtocol> {
         return self.state
     }
     
+    private class StoreAP: StoreAPI {
+        var dispatch: (StoreActionProtocol) -> Void
+    
+        var getState: () -> Any
+    
+        init(_ dispatch: @escaping (StoreActionProtocol) -> Void, _ getState: @escaping () -> Any) {
+            self.dispatch = dispatch
+            self.getState = getState
+        }
+    }
+    
     /// Dispatches an action to this store. This is the only way to trigger a state change.
     ///
     /// [Middleware](x-source-tag://StoreMiddlewareProtocol) plugins registered with this [store](x-source-tag://Store) will first receive the action dispatched before they're eventually passed on to the reducers.
@@ -87,10 +98,11 @@ final public class Store<State: StoreStateProtocol> {
         var currentIndex = middleware.startIndex
         let endIndex = middleware.endIndex - 1
         var middlewarePluginsCalled: [String] = []
+        let middlewareStoreAPI = StoreAP(dispatch, getState)
 
         func run(_ mware: StoreMiddlewareProtocol, _ action: StoreActionProtocol, _ index: Int) {
             mware.run(
-                store: (dispatch, getState),
+                store: middlewareStoreAPI,
                 next: { [weak self] ac in
                     guard let self = self else { return }
                     

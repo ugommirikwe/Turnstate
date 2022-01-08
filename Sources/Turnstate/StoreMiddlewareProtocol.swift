@@ -43,7 +43,12 @@ public protocol StoreMiddlewareProtocol: AnyObject {
 }
 
 /// Defines the signature of the object that encapsulates the functions passed to a middleware plugin from a store instance.
-public typealias StoreAPI = (
-    dispatch: (StoreActionProtocol) -> Void,
-    getState: () -> Any
-)
+//public typealias StoreAPI = (
+//    dispatch: (StoreActionProtocol) -> Void,
+//    getState: () -> Any
+//)
+
+public protocol StoreAPI: AnyObject {
+    var dispatch: (StoreActionProtocol) -> Void { get }
+    var getState: () -> Any { get }
+}
