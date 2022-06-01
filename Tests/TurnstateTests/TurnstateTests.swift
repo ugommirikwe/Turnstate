@@ -1,7 +1,7 @@
 import XCTest
 @testable import Turnstate
 
-final class StoreTests: XCTestCase {
+final class TurnstateTests: XCTestCase {
     private var store: Store<AppState>!
     private var unSubscribeFromStore: (() -> Void)!
     private var appStateSubscription: AppState!
@@ -15,9 +15,9 @@ final class StoreTests: XCTestCase {
             middleware: [LoggerMiddleware()]
         )
         
-        unSubscribeFromStore = store.subscribe([UUID(): { [weak self] newState in
+        unSubscribeFromStore = store.subscribe { [weak self] newState in
             self?.appStateSubscription = newState
-        }])
+        }
     }
     
     override func tearDownWithError() throws {
@@ -75,7 +75,7 @@ struct AppState: StoreStateProtocol {
     )
 
     static func generateAppStateDummy() -> AppState {
-        return AppState(user: .generateUserDummy(), todos: [])
+        AppState(user: .generateUserDummy(), todos: [])
     }
 }
 

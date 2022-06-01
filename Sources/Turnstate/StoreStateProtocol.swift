@@ -55,15 +55,15 @@ extension StoreStateProtocol {
     /// ```
     ///
     /// - Parameters:
-    ///   - updating: A ``PartialKeyPath`` object, which indicates the property to be modified.
+    ///   - updating: A ``WritableKeyPath`` object, which indicates the property to be modified.
     ///   - to: Value to assign to the property.
     ///
     /// - Returns: A copy of the state object it is called on, with new value assigned to property indicated for the `updating` ``KeyPath`` parameter.
     ///
     /// - Tag: copy
-    public func copy<T>(updating keyPath: PartialKeyPath<Self>, to value: T) -> Self {
+    public func copy<T>(updating keyPath: WritableKeyPath<Self, T>, to value: T) -> Self {
         var s = self
-        s[keyPath: keyPath as! WritableKeyPath<Self, T>] = value
+        s[keyPath: keyPath] = value
         return s
     }
 }
