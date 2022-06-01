@@ -29,6 +29,8 @@ extension StoreStateProtocol {
     
     /// Enables cloning the current state tree and modifying its readonly properties in a fluid syntax. This function is inspired by the [Kotlin data class `copy` function](https://kotlinlang.org/docs/data-classes.html#copying).
     ///
+    /// **Important**: if the value assigned to the `updating` parameter isn't of type ``WritableKeyPath``, this function will simply return the state object without assigning the ``value`` parameter passed to the function. This can lead to bugs in your code, so pay attention!
+    ///
     /// This function can be used in the following manner:
     ///
     /// ```
@@ -55,13 +57,17 @@ extension StoreStateProtocol {
     /// ```
     ///
     /// - Parameters:
-    ///   - updating: A ``WritableKeyPath`` object, which indicates the property to be modified.
+    ///   - updating: A ``KeyPath`` object, which indicates the property to be modified. If value assigned to this parameter isn't of type ``WritableKeyPath``, this function will simply return the state object without assigning the ``value`` parameter passed to the function. This can lead to bugs in your code, so pay attention!
     ///   - to: Value to assign to the property.
     ///
-    /// - Returns: A copy of the state object it is called on, with new value assigned to property indicated for the `updating` ``KeyPath`` parameter.
+    /// - Returns: A copy of the state object it is called on, with new value assigned to property indicated for the `updating` ``KeyPath`` parameter. If the `updating` parameter isn't of type ``WritableKeyPath``, the state object will be returned without assigning the ``value`` parameter passed to the function.
     ///
     /// - Tag: copy
-    public func copy<T>(updating keyPath: WritableKeyPath<Self, T>, to value: T) -> Self {
+    public func copy<T>(updating keyPath: KeyPath<Self, T>, to value: T) -> Self {
+        guard let keyPath = keyPath as? WritableKeyPath<Self, T> else {
+            return self
+        }
+        
         var s = self
         s[keyPath: keyPath] = value
         return s

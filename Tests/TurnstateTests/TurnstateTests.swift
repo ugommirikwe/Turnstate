@@ -83,7 +83,7 @@ let userReducer: Reducer<AppState> = { state, action in
     switch action as! StoreAction {
         
     case .UserModified(let user):
-        return state.copy(updating: \AppState.user, to: user)
+        return state.copy(updating: \.user, to: user)
         
     case .UserAddRequested(_): fallthrough
         
@@ -97,7 +97,7 @@ let todoReducer: Reducer<AppState> = { state, action in
     switch action as! StoreAction {
         
     case .TodoAddRequested(let todo):
-        return state.copy(updating: \AppState.todos, to: state.todos + [todo])
+        return state.copy(updating: \.todos, to: state.todos + [todo])
         
     default: break
     }
